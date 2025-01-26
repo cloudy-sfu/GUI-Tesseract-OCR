@@ -1,8 +1,10 @@
 import os
 import sys
+
+import tesserocr  # must be before PyQt5
 from PyQt5.Qt import *
 from PyQt5.QtWidgets import *
-import tesserocr
+
 from ocr_wrapper import BatchOCR, SingleOCR, ClipboardOCR, pixmap_to_pillow_image
 
 
@@ -11,20 +13,84 @@ class MyWindow(QMainWindow):
         super(MyWindow, self).__init__(flags=Qt.Window)
         dpi = self.screen().logicalDotsPerInch()
         font_size = max(6, round(22 - dpi / 12))
-        self.setStyleSheet(f'font-family: "Microsoft YaHei", Calibri, Ubuntu; font-size: {font_size}pt;')
+        self.setStyleSheet(f'font-size: {font_size}pt;')
         self.resize(1280, 720)
-        self.setWindowTitle('Chinese and English OCR')
+        self.setWindowTitle('Tesseract OCR')
         self.center()
 
-        os.makedirs('raw/', exist_ok=True)
         os.makedirs('raw/models', exist_ok=True)
         self.operator = None
         self.busy = False
         self.project_root = os.path.abspath('raw/')
         self.lang = 'eng'
 
-        self.create_menu_bar()
-        self.create_language_box()
+        # File menu
+        open_project_root = QAction('&Open target folder ...', self)
+        open_project_root.triggered.connect(self.open_project_root)
+        open_project_root.setShortcut('Ctrl+T')
+        open_pretrained_models_repo = QAction(
+            '&Download pretrained language modules ...', self)
+        open_pretrained_models_repo.triggered.connect(self.download_pretrained_models)
+        open_pretrained_models_path = QAction("O&pen language modules ...", self)
+        open_pretrained_models_path.triggered.connect(self.open_pretrained_models)
+        switch_language = QAction('&Switch language ...', self)
+        switch_language.triggered.connect(self.switch_language)
+        switch_language.setShortcut('Ctrl+L')
+        close = QAction('&Exit', self)
+        close.triggered.connect(self.close)
+        close.setShortcut('Ctrl+W')
+
+        # Recognize menu
+        reco_folder = QAction('From &folder ...', self)
+        reco_folder.triggered.connect(self.ocr_batch)
+        reco_file = QAction('From &single image ...', self)
+        reco_file.triggered.connect(self.ocr_single)
+        reco_clipboard = QAction('From &clipboard', self)
+        reco_clipboard.triggered.connect(self.ocr_clipboard)
+        reco_clipboard.setShortcut('Ctrl+Shift+V')
+
+        # About menu
+        version = QAction('&Version and supported language', self)
+        version.triggered.connect(self.print_version)
+
+        # First-level buttons
+        file = QMenu('&File', self)
+        file.addActions(
+            [open_project_root, open_pretrained_models_repo, open_pretrained_models_path,
+             switch_language, close])
+        recognize = QMenu('&Recognize', self)
+        recognize.addActions([reco_folder, reco_file, reco_clipboard])
+        help_center = QMenu('&Help', self)
+        help_center.addActions([version])
+
+        # Menu bar
+        menubar = QMenuBar()
+        menubar.addMenu(file)
+        menubar.addMenu(recognize)
+        menubar.addMenu(help_center)
+        self.setMenuBar(menubar)
+
+        # Language box
+        self.language_combo = QComboBox()
+        self.language_box = QDialog()
+        self.language_box.setStyleSheet(
+            f'font-family: "Microsoft YaHei", Calibri, Ubuntu; font-size: {font_size}pt;')
+        self.language_box.setMinimumWidth(480)
+        self.language_box.setWindowTitle('Select a language')
+        layout = QVBoxLayout()
+        hint = QLabel('Please select a supported language. If your language is not '
+                      'supported, please follow the guidance at '
+                      'https://github.com/cloudy-sfu/GUI-for-tesseract-OCR and import '
+                      'your first language model.')
+        hint.setWordWrap(True)
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(self.language_box.accept)
+        button_box.rejected.connect(self.language_box.reject)
+        layout.addWidget(hint)
+        layout.addWidget(self.language_combo)
+        layout.addWidget(button_box)
+        self.language_box.setLayout(layout)
+
         self.target_displayed = QLabel(self)
         self.target_displayed.setText(self.project_root)
         self.source_displayed = QLabel(self)
@@ -46,47 +112,6 @@ class MyWindow(QMainWindow):
         self.status = QStatusBar()
         self.status.showMessage('Ready.', 0)
         self.setStatusBar(self.status)
-
-    def create_menu_bar(self):
-        # File menu
-        open_project_root = QAction('&Open target folder ...', self)
-        open_project_root.triggered.connect(self.open_project_root)
-        open_project_root.setShortcut('Ctrl+T')
-        open_pretrained_models_repo = QAction('&Download pretrained language modules ...', self)
-        open_pretrained_models_repo.triggered.connect(self.download_pretrained_models)
-        open_pretrained_models_path = QAction("O&pen language modules ...", self)
-        open_pretrained_models_path.triggered.connect(self.open_pretrained_models)
-        switch_language = QAction('&Switch language ...', self)
-        switch_language.triggered.connect(self.switch_language)
-        switch_language.setShortcut('Ctrl+L')
-        close = QAction('&Exit', self)
-        close.triggered.connect(self.close)
-        close.setShortcut('Ctrl+W')
-        # Recognize menu
-        reco_folder = QAction('From &folder ...', self)
-        reco_folder.triggered.connect(self.ocr_batch)
-        reco_file = QAction('From &single image ...', self)
-        reco_file.triggered.connect(self.ocr_single)
-        reco_clipboard = QAction('From &clipboard', self)
-        reco_clipboard.triggered.connect(self.ocr_clipboard)
-        reco_clipboard.setShortcut('Ctrl+Shift+V')
-        # About menu
-        version = QAction('&Version and supported language', self)
-        version.triggered.connect(self.print_version)
-        # First-level buttons
-        file = QMenu('&File', self)
-        file.addActions([open_project_root, open_pretrained_models_repo, open_pretrained_models_path,
-                         switch_language, close])
-        recognize = QMenu('&Recognize', self)
-        recognize.addActions([reco_folder, reco_file, reco_clipboard])
-        help_center = QMenu('&Help', self)
-        help_center.addActions([version])
-        # Menu bar
-        menubar = QMenuBar()
-        menubar.addMenu(file)
-        menubar.addMenu(recognize)
-        menubar.addMenu(help_center)
-        self.setMenuBar(menubar)
 
     def status_check_decorator(action_name, *args, **kwargs):
         def status_check_decorator_1(pyfunc):
@@ -122,12 +147,14 @@ class MyWindow(QMainWindow):
 
     @delayed_thread_check_decorator(action_name='Recognize folder')
     def ocr_batch(self):
-        fp = QFileDialog.getExistingDirectory(self, caption='Images to recognize', options=QFileDialog.ShowDirsOnly)
+        fp = QFileDialog.getExistingDirectory(self, caption='Images to recognize',
+                                              options=QFileDialog.ShowDirsOnly)
         if not (fp and os.path.isdir(fp)):
             self.message.append('The source to recognize does not exist.')
             self.delayed_thread_finished()
             return
-        dist = QFileDialog.getExistingDirectory(self, caption='Export to', options=QFileDialog.ShowDirsOnly)
+        dist = QFileDialog.getExistingDirectory(self, caption='Export to',
+                                                options=QFileDialog.ShowDirsOnly)
         os.makedirs(dist, exist_ok=True)
         self.project_root = dist
         self.source_displayed.setText(fp)
@@ -205,31 +232,11 @@ class MyWindow(QMainWindow):
         libpath = QUrl().fromLocalFile('raw/models')
         QDesktopServices().openUrl(libpath)
 
-    def create_language_box(self):
-        _, languages = tesserocr.get_languages('raw/models/')
-        self.language_combo = QComboBox()
-        self.language_combo.addItems(languages)
-        self.language_box = QDialog()
-        dpi = self.screen().logicalDotsPerInch() / 96
-        font_size = 14 if dpi <= 1 else (12 if 1 < dpi <= 1.25 else (10 if 1.25 < dpi <= 1.5 else 8))
-        self.language_box.setStyleSheet(f'font-family: "Microsoft YaHei", Calibri, Ubuntu; font-size: {font_size}pt;')
-        self.language_box.setMinimumWidth(480)
-        self.language_box.setWindowTitle('Select a language')
-        layout = QVBoxLayout()
-        hint = QLabel('Please select a supported language. If your language is not supported, please '
-                      'follow the guidance at https://github.com/cloudy-sfu/GUI-for-tesseract-OCR and '
-                      'import your first language model.')
-        hint.setWordWrap(True)
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        button_box.accepted.connect(self.language_box.accept)
-        button_box.rejected.connect(self.language_box.reject)
-        layout.addWidget(hint)
-        layout.addWidget(self.language_combo)
-        layout.addWidget(button_box)
-        self.language_box.setLayout(layout)
-
     @status_check_decorator(action_name='switch_language')
     def switch_language(self):
+        _, languages = tesserocr.get_languages('raw/models')
+        self.language_combo.clear()
+        self.language_combo.addItems(languages)
         action = self.language_box.exec_()
         if action == QDialog.Accepted:
             self.lang = self.language_combo.currentText()

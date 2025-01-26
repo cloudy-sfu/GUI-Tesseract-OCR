@@ -2,15 +2,24 @@
 
  The GUI for Tesseract OCR software in Windows 64-bit platform
 
-![](https://img.shields.io/badge/OS-Windows%2010%2064--bit-lightgrey)
-![](https://img.shields.io/badge/dependencies-Python%203.11-blue)
+![](https://img.shields.io/badge/OS-Windows%2010%2064--bit-navy)
+![](https://img.shields.io/badge/dependencies-Python%203.12-blue)
+
+## Install
+
+From release:
+
+1. Unzip and click `GUI-for-tesseract-OCR.exe` to run this program.
+
+From source code:
+
+1. Download the "tesseract" wheel package from https://github.com/simonflueckiger/tesserocr-windows_build/releases For example, the downloaded filename is `tesserocr-2.6.0-cp311-cp311-win_amd64.whl`. Put it at the program root directory, and run `pip install tesserocr-2.6.0-cp311-cp311-win_amd64.whl `.
+2. Run `pip install -r requirements.txt`.
+3. To compile a release version, run `pyinstaller main.spec`.
 
 ## Usage
 
-### Release
-
-1. Unzip and click `GUI-for-tesseract-OCR.exe` to run this program.
-2. By default, we provide an English language model in the installation package. Click `Help | Version and supported language ` to find installed language models.
+1. By default, we provide an English language model in the installation package. Click `Help | Version and supported language ` to find installed language models.
     ![image-20230212142100249](./assets/image-20230212142100249.png)
 
 If the languages you want are not supported: 
@@ -27,21 +36,8 @@ If the languages you want are not supported:
 8.   If you want to switch the language, that the OCR program uses, please click `File | Switch language` . In the popped-up dialog "Select a language", choose your language and click "OK".
      ![image-20230212142823934](./assets/image-20230212142823934.png)
      The current language will appear in the "Language" row in the main window.
-
-Now, you're set up and can choose any item in `Recognize` menu to start an OCR task.
-
-![image-20230212143110006](./assets/image-20230212143110006.png)
-
-### Source code
-
-Download the "tesseract" wheel package from https://github.com/simonflueckiger/tesserocr-windows_build/releases
-
-For example, the downloaded filename is `tesserocr-2.6.0-cp311-cp311-win_amd64.whl`. Put it at the program root directory, and run `pip install tesserocr-2.6.0-cp311-cp311-win_amd64.whl `.
-
-Then, run `pip install -r requirements.txt`.
-
-To compile a release version, run `pyinstaller main.spec`.
+9.   Now, you're set up and can choose any item in `Recognize` menu to start an OCR task.![image-20230212143110006](./assets/image-20230212143110006.png)
 
 ## Acknowledgment
 
-[Tessdata](https://github.com/tesseract-ocr/tessdata/tree/4767ea922bcc460e70b87b1d303ebdfed0897da8) provides the models.
+Pretrained OCR models: [Tessdata](https://github.com/tesseract-ocr/tessdata/tree/4767ea922bcc460e70b87b1d303ebdfed0897da8)
